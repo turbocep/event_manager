@@ -52,12 +52,13 @@ def save_thank_you_letter(id, form_letter)
   end
 end
 
-def get_registration_time(reg_date)
-  time = Time.strptime(reg_date, "%m/%d/%Y %k:%M")
-  "#{time.hour}:#{time.min}"
+def format_time(reg_time)
+  "#{reg_time.hour}:#{reg_time.min}"
 end
 
 puts 'EventManager initialized.'
+
+WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
 contents = CSV.open(
   'event_attendees.csv',
@@ -70,6 +71,7 @@ template_letter = File.read('form_letter.erb')
 erb_template = ERB.new template_letter
 
 registration_hours = []
+registration_weekdays = []
 
 contents.each do |row|
   id = row[0]
@@ -80,7 +82,13 @@ contents.each do |row|
   phone = clean_home_phone(row[:homephone])
 
   reg_date = row[:regdate]
-  registration_hours.push(get_registration_time(reg_date))
+  #Convert to time object
+  reg_time = Time.strptime(reg_date, "%m/%d/%Y %k:%M")
+  #Push time string into array
+  registration_hours.push(format_time(reg_time))
+  #Push weekday to array from time string
+  registration_weekdays.push(reg_time.wday)
+
   zipcode = clean_zipcode(row[:zipcode])
   legislators = legislators_by_zipcode(zipcode)
 
@@ -89,9 +97,8 @@ contents.each do |row|
   save_thank_you_letter(id, form_letter)
 end
 
-p registration_hours
-
 hours_count = {}
+weekdays_count = {}
 
 registration_hours.each do |time|
   hour = time[0..1].to_i
@@ -102,8 +109,18 @@ registration_hours.each do |time|
   end
 end
 
-p hours_count
+registration_weekdays.each do |day|
+  named_day = WEEKDAYS[day]
+  if weekdays_count.key?(named_day)
+    weekdays_count[named_day] += 1
+  else
+    weekdays_count[named_day] = 1
+  end
+end
 
+#Show counted instances of registration time and weekday
+p hours_count
+p weekdays_count
 
 
 
