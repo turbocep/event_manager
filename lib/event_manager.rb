@@ -1,6 +1,7 @@
 require 'csv'
 require 'google/apis/civicinfo_v2'
 require 'erb'
+require 'time'
 
 def clean_zipcode(zipcode)
   zipcode.to_s.rjust(5, '0')[0..4]
@@ -51,6 +52,11 @@ def save_thank_you_letter(id, form_letter)
   end
 end
 
+def get_registration_time(reg_date)
+  time = Time.strptime(reg_date, "%m/%d/%Y %k:%M")
+  "#{time.hour}:#{time.min}"
+end
+
 puts 'EventManager initialized.'
 
 contents = CSV.open(
@@ -63,11 +69,18 @@ p contents.headers
 template_letter = File.read('form_letter.erb')
 erb_template = ERB.new template_letter
 
+registration_hours = []
+
 contents.each do |row|
   id = row[0]
   name = row[:first_name]
+  #I was asked to clean the phone numbers. I did so, but didn't store them anywhere. The cleaned nums are output into the "phone" variable below. 
+
+  #TODO: Make a copy of the CSV with the cleaned phone numbers. 
   phone = clean_home_phone(row[:homephone])
-  p phone
+
+  reg_date = row[:regdate]
+  registration_hours.push(get_registration_time(reg_date))
   zipcode = clean_zipcode(row[:zipcode])
   legislators = legislators_by_zipcode(zipcode)
 
@@ -75,6 +88,21 @@ contents.each do |row|
 
   save_thank_you_letter(id, form_letter)
 end
+
+p registration_hours
+
+hours_count = {}
+
+registration_hours.each do |time|
+  hour = time[0..1].to_i
+  if hours_count.key?(hour)
+    hours_count[hour] += 1
+  else
+    hours_count[hour] = 1
+  end
+end
+
+p hours_count
 
 
 
